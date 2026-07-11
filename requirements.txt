@@ -1,6 +1,0 @@
-homeassistant==2026.4.0
-aiohttp
-ruff
-voluptuous
-pre-commit
-sympy

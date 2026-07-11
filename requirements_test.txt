@@ -1,4 +1,3 @@
--r requirements.txt
 flake8
 flake8-docstrings
 pytest
@@ -9,3 +8,9 @@ pytest-freezer
 pytest-tornasync
 pytest-trio
 pre-commit
+homeassistant
+aiohttp
+ruff
+voluptuous
+pre-commit
+sympy
