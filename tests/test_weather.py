@@ -88,6 +88,32 @@ def test_build_attributes_missing_key() -> None:
     assert result == []
 
 
+def test_build_attributes_none_value_and_missing_key() -> None:
+    """Test that None values are skipped (not formatted or included) and missing keys are also skipped."""
+    weather_data = {
+        "condition": "Sunny",
+        "precipitation_probability": None,
+        # "wind_speed" is intentionally absent to test missing key handling
+    }
+    attributes = [
+        WeatherAttribute(name="Condition", key="condition", formatter=None),
+        WeatherAttribute(
+            name="Chance of Precipitation",
+            key="precipitation_probability",
+            formatter=_friendly_precipitation_chance,
+        ),
+        WeatherAttribute(name="Wind Speed", key="wind_speed", formatter=None),
+    ]
+    result = _build_attributes(attributes, weather_data)
+
+    assert len(result) == 1
+    assert result[0] == "  Condition: Sunny"
+    # precipitation_probability with None value should be skipped
+    assert not any("Precipitation" in line for line in result)
+    # wind_speed key is missing so should also be skipped
+    assert not any("Wind Speed" in line for line in result)
+
+
 # =============================================================================
 # _find_target_date() tests
 # =============================================================================
