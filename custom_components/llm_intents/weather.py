@@ -61,8 +61,6 @@ class ForecastRetrievalError(WeatherToolError):
 
 def _friendly_precipitation_chance(precipitation_chance: int) -> str:
     """Format the precipitation chance into string categories for the LLM."""
-    if precipitation_chance is None:
-        return "unknown"
     for threshold, value in PRECIPITATION_THRESHOLDS.items():
         if precipitation_chance <= threshold:
             return value
