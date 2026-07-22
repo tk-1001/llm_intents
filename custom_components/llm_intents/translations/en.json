@@ -141,6 +141,7 @@
         "description": "Choose what you want to do:",
         "menu_options": {
           "configure": "Configure Search Services",
+          "test_youtube_music": "Test YouTube Music",
           "configure_weather": "Configure Weather Forecast",
           "configure_basic_utilities": "Configure Basic Utilities",
           "home_control": "Configure Home Control API"
@@ -155,6 +156,18 @@
           "google_routes_enabled": "Enable Google Routes",
           "youtube_enabled": "Enable YouTube Search",
           "wikipedia_enabled": "Enable Wikipedia Search"
+        }
+      },
+      "test_youtube_music": {
+        "title": "Test YouTube Music",
+        "description": "Searches YouTube and plays the first result on the selected media player.\n\n**Result:** {result}",
+        "data": {
+          "query": "Music to search for",
+          "entity_id": "Media player"
+        },
+        "data_description": {
+          "query": "Enter a song, artist, album, or other YouTube search",
+          "entity_id": "The device that will play the audio"
         }
       },
       "configure_weather": {

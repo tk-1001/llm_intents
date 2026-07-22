@@ -91,6 +91,8 @@ from .const import (
     PROVIDER_GOOGLE,
     SERVICE_DEFAULTS,
 )
+from .play_music import PlayMusicTool
+from .youtube import SearchYouTubeTool
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -114,6 +116,7 @@ STEP_HOME_CONTROL = "home_control"
 STEP_CONFIGURE_SEARCH = "configure"
 STEP_CONFIGURE_WEATHER = "configure_weather"
 STEP_CONFIGURE_BASIC_UTILITIES = "configure_basic_utilities"
+STEP_TEST_YOUTUBE_MUSIC = "test_youtube_music"
 
 
 class NullableNumberSelector(NumberSelector):
@@ -834,10 +837,68 @@ class LlmIntentsOptionsFlow(config_entries.OptionsFlowWithReload):
                     STEP_CONFIGURE_BASIC_UTILITIES,
                     STEP_HOME_CONTROL,
                     STEP_CONFIGURE_SEARCH,
+                    STEP_TEST_YOUTUBE_MUSIC,
                     STEP_CONFIGURE_WEATHER,
                 ],
             )
         return None
+
+    async def async_step_test_youtube_music(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Search YouTube and play the first result as music."""
+        result = "Ready to test."
+        if user_input is not None:
+            context = LLMContext(
+                platform=DOMAIN,
+                context=None,
+                language="en",
+                assistant=None,
+                device_id=None,
+            )
+            search = await SearchYouTubeTool(self.config_data, self.hass).async_call(
+                self.hass,
+                llm.ToolInput(
+                    tool_name="search_youtube",
+                    tool_args={"query": user_input["query"], "num_results": 1},
+                ),
+                context,
+            )
+            matches = search.get("results", [])
+            if not matches:
+                result = str(search.get("error") or search.get("result"))
+            else:
+                track = matches[0]
+                playback = await PlayMusicTool(self.config_data, self.hass).async_call(
+                    self.hass,
+                    llm.ToolInput(
+                        tool_name="play_music",
+                        tool_args={
+                            "music_url": track["url"],
+                            "entity_id": user_input["entity_id"],
+                        },
+                    ),
+                    context,
+                )
+                result = (
+                    f'Playing "{track["title"]}" on {user_input["entity_id"]}.'
+                    if playback.get("success")
+                    else str(playback.get("error"))
+                )
+
+        return self.async_show_form(
+            step_id=STEP_TEST_YOUTUBE_MUSIC,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("query"): TextSelector(),
+                    vol.Required("entity_id"): EntitySelector(
+                        EntitySelectorConfig(domain="media_player")
+                    ),
+                }
+            ),
+            description_placeholders={"result": result},
+        )
 
     async def async_step_configure(
         self,
