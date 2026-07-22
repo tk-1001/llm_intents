@@ -194,12 +194,12 @@ When a future departure time is supplied, the API returns predicted traffic for 
 #### Requirements
 
 * Requires a [Google API key](https://console.cloud.google.com/apis/credentials) with **both** the **Routes API** and the **Places API (New)** enabled. The Places API is used to improve destination accuracy; you do not need to enable the Google Places tool in this integration.
-* The same Google API key can be shared with the Google Places and YouTube tools if those are configured.
+* The same Google API key can be shared with the Google Places tool if it is configured.
 
 #### Configuration Steps
 
 1. Enable "Google Routes" during setup.
-2. Enter your Google API key (the same key used for Google Places / YouTube if configured).
+2. Enter your Google API key (the same key used for Google Places if configured).
 3. Enter your home address — this is used as the starting point for all route lookups.
 4. Choose a default travel mode — used whenever the LLM doesn't specify one (e.g. select `WALK` if you don't drive).
 
@@ -282,15 +282,11 @@ Search results include video titles, URLs, channel names, descriptions, and publ
 
 #### Requirements
 
-* Requires a [Google API key](https://console.cloud.google.com/apis/credentials) with the **YouTube Data API v3** enabled.
-* The same Google API key can be shared with the Google Places tool if both are configured.
-* Google provides a free tier with generous quotas for YouTube Data API v3.
+* YouTube search is provided by `yt-dlp`; no API key is required.
 
 #### Configuration Steps
 
 1. Select "YouTube" during setup.
-2. Enter your Google API key (the same key used for Google Places if configured).
-3. Configure the number of search results to return (default: 1).
 
 #### Playback Compatibility
 
@@ -317,16 +313,9 @@ The tool automatically filters media players to only include video-capable devic
 
 #### How It Works
 
-1. **Search**: When a user requests a YouTube video, the `search_youtube` tool queries YouTube's API and returns matching videos with metadata.
+1. **Search**: When a user requests a YouTube video, the `search_youtube` tool searches YouTube through `yt-dlp` and returns matching videos with metadata.
 2. **Playback**: If the user wants to play a video, the `play_video` tool uses the video URL from search results and calls Home Assistant's `media_player.play_media` service on the target device(s).
-3. **Caching**: Search results are cached for 2 hours to reduce API usage and improve response times for repeated queries.
-
-#### Options
-
-| Setting             | Required | Default | Description                                                              |
-|---------------------|----------|---------|--------------------------------------------------------------------------|
-| `API Key`           | ✅        | —       | Google API key with YouTube Data API v3 enabled                          |
-| `Number of Results` | ✅        | `1`     | Number of video results to return (1-25). Use more for multiple options. |
+3. **Caching**: Search results are cached for 2 hours to reduce requests and improve response times for repeated queries.
 
 ---
 

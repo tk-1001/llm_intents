@@ -14,3 +14,4 @@ ruff
 voluptuous
 pre-commit
 sympy
+yt-dlp

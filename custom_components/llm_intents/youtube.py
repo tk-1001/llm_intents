@@ -1,21 +1,15 @@
 """YouTube search tool for Home Assistant LLM integration."""
 
 import logging
-from http import HTTPStatus
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import llm
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util.json import JsonObjectType
+from yt_dlp import YoutubeDL
 
 from .base_tool import BaseTool
 from .cache import SQLiteCache
-from .const import (
-    CONF_PROVIDER_API_KEYS,
-    DOMAIN,
-    PROVIDER_GOOGLE,
-)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,82 +58,37 @@ class SearchYouTubeTool(BaseTool):
         llm_context: llm.LLMContext,
     ) -> JsonObjectType:
         """Call the tool."""
-        config_data = hass.data[DOMAIN].get("config", {})
-        entry = next(iter(hass.config_entries.async_entries(DOMAIN)))
-        config_data = {**config_data, **entry.options}
-
         query = tool_input.tool_args["query"]
         num_results = tool_input.tool_args.get("num_results", 1)
 
-        provider_keys = config_data.get(CONF_PROVIDER_API_KEYS) or {}
-        api_key = provider_keys.get(PROVIDER_GOOGLE, "")
-
-        if not api_key:
-            return {"error": "Google API key not configured"}
-
         try:
-            session = async_get_clientsession(hass)
-
             cache = SQLiteCache()
-            cache_params = {"query": query, "maxResults": num_results}
-            cached_response = cache.get(__name__, cache_params)
-            if cached_response:
+            cache_params = {"query": query, "num_results": num_results}
+            if cached_response := cache.get(__name__, cache_params):
                 return cached_response
 
-            params = {
-                "part": "snippet",
-                "q": query,
-                "type": "video",
-                "maxResults": num_results,
-                "key": api_key,
-            }
+            data = await hass.async_add_executor_job(
+                lambda: YoutubeDL(
+                    {"extract_flat": True, "quiet": True},
+                ).extract_info(f"ytsearch{num_results}:{query}", download=False),
+            )
+            results = [
+                {
+                    "title": item.get("title"),
+                    "url": item.get("webpage_url") or item.get("url"),
+                    "channel": item.get("channel") or item.get("uploader"),
+                    "description": item.get("description"),
+                    "published_at": item.get("upload_date"),
+                }
+                for item in (data or {}).get("entries", [])
+                if item
+            ]
+            if not results:
+                return {"result": "No videos found"}
 
-            async with session.get(
-                "https://www.googleapis.com/youtube/v3/search",
-                params=params,
-            ) as resp:
-                if resp.status == HTTPStatus.OK:
-                    data = await resp.json()
-                    results = []
-
-                    for item in data.get("items", []):
-                        video_id = item.get("id", {}).get("videoId")
-                        snippet = item.get("snippet", {})
-
-                        if video_id:
-                            results.append(
-                                {
-                                    "title": snippet.get("title"),
-                                    "url": f"https://www.youtube.com/watch?v={video_id}",
-                                    "channel": snippet.get("channelTitle"),
-                                    "description": snippet.get("description"),
-                                    "published_at": snippet.get("publishedAt"),
-                                },
-                            )
-
-                    if results:
-                        cache.set(
-                            __name__,
-                            cache_params,
-                            {
-                                "results": results,
-                                "instruction": self.response_directive,
-                            },
-                        )
-
-                    return (
-                        {"results": results, "instruction": self.response_directive}
-                        if results
-                        else {"result": "No videos found"}
-                    )
-
-                _LOGGER.error(
-                    "YouTube search received HTTP %s error: %s",
-                    resp.status,
-                    await resp.text(),
-                )
-                return {"error": f"YouTube search error: {resp.status}"}
-
+            response = {"results": results, "instruction": self.response_directive}
+            cache.set(__name__, cache_params, response)
+            return response
         except Exception:
             _LOGGER.exception("YouTube search encountered an error")
             return {"error": "Error searching YouTube"}

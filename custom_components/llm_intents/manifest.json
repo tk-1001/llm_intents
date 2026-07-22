@@ -15,7 +15,8 @@
     "custom_components.llm_intents"
   ],
   "requirements": [
-    "sympy>=1.14.0"
+    "sympy>=1.14.0",
+    "yt-dlp"
   ],
   "version": "1.8.3"
 }
