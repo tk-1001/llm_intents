@@ -39,6 +39,7 @@ from .google_places import FindPlacesTool
 from .google_routes import GetRouteTool
 from .home_control import HomeControlAPI
 from .play_media import PlayVideoTool
+from .play_music import PlayMusicTool
 from .searxng_search import SearXngSearchTool
 from .unit_converter import UnitConverterTool
 from .weather import WeatherForecastTool
@@ -73,6 +74,7 @@ WEATHER_CONF_ENABLED_MAP = [
 # Media tools are enabled when YouTube is enabled
 MEDIA_CONF_ENABLED_MAP = [
     (CONF_YOUTUBE_ENABLED, PlayVideoTool),
+    (CONF_YOUTUBE_ENABLED, PlayMusicTool),
 ]
 
 BASIC_UTILITIES_CONF_ENABLED_MAP = [

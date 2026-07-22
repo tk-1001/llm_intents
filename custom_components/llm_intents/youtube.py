@@ -34,7 +34,7 @@ class SearchYouTubeTool(BaseTool):
 
     response_directive = (
         "Use the search results to answer the user's query.\n"
-        "If the user wants to play a video, use the play_video tool with the video URL."
+        "Use play_video for video playback or play_music for music playback."
     )
 
     parameters = vol.Schema(

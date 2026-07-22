@@ -25,7 +25,7 @@ Use the Weather Services tools to access current weather and forecast data.
 """
 
 MEDIA_SERVICES_PROMPT = """
-Use the Media Services tools to play video content on media player devices.
+Use the Media Services tools to play video or music on media player devices.
 """
 
 BASIC_UTILITIES_SERVICES_PROMPT = """
