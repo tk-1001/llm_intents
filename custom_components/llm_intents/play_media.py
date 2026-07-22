@@ -1,6 +1,8 @@
 """Play video tool for Tools for Assist integration."""
 
+import json
 import logging
+from urllib.parse import parse_qs, urlparse
 
 import voluptuous as vol
 from homeassistant.components.media_player import (
@@ -78,7 +80,7 @@ def get_video_capable_media_players(
     Uses device_class to determine video capability:
     - tv, receiver = video capable
     - speaker = audio only
-    - no device_class = skipped (must be explicitly configured)
+    - Cast entities without a device class = video capable
 
     Args:
         hass: Home Assistant instance
@@ -115,15 +117,6 @@ def get_video_capable_media_players(
         if not state:
             continue
 
-        # Use device_class to determine video capability
-        device_class = state.attributes.get("device_class")
-        if not device_class:
-            _LOGGER.debug(
-                "Entity %s has no device_class set, skipping",
-                entity.entity_id,
-            )
-            continue
-
         features = state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
         if not (features & MediaPlayerEntityFeature.PLAY_MEDIA):
             _LOGGER.debug(
@@ -132,8 +125,11 @@ def get_video_capable_media_players(
             )
             continue
 
-        device_class_lower = device_class.lower()
-        if device_class_lower in VIDEO_CAPABLE_DEVICE_CLASSES:
+        device_class = state.attributes.get("device_class")
+        device_class_lower = device_class.lower() if device_class else None
+        if device_class_lower in VIDEO_CAPABLE_DEVICE_CLASSES or (
+            not device_class and entity.platform == "cast"
+        ):
             _LOGGER.debug(
                 "Entity %s has video-capable device_class: %s",
                 entity.entity_id,
@@ -306,10 +302,36 @@ class PlayVideoTool(BaseTool):
 
         # Build a description of the target for messages
         target_desc = entity_id or area_input or device_id
-        service_data = {
-            "media_content_id": video_url,
-            "media_content_type": "url",
-        }
+        parsed_url = urlparse(video_url)
+        video_id = None
+        if parsed_url.hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
+            video_id = parse_qs(parsed_url.query).get("v", [None])[0]
+        elif parsed_url.hostname == "youtu.be":
+            video_id = parsed_url.path.strip("/").split("/", 1)[0]
+
+        target_entities = target.get("entity_id", [])
+        if isinstance(target_entities, str):
+            target_entities = [target_entities]
+        entity_registry = er.async_get(hass)
+        is_cast_target = bool(target_entities) and all(
+            (entry := entity_registry.async_get(entity_id))
+            and entry.platform == "cast"
+            for entity_id in target_entities
+        )
+
+        service_data = (
+            {
+                "media_content_id": json.dumps(
+                    {"app_name": "youtube", "media_id": video_id},
+                ),
+                "media_content_type": "cast",
+            }
+            if video_id and is_cast_target
+            else {
+                "media_content_id": video_url,
+                "media_content_type": "url",
+            }
+        )
 
         _LOGGER.debug(
             "Calling media_player.play_media with target=%s, service_data=%s",
