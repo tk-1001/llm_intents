@@ -1,6 +1,7 @@
 """Play music tool for Tools for Assist integration."""
 
 import logging
+from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.components import media_source
@@ -69,11 +70,49 @@ class PlayMusicTool(BaseTool):
         """Resolve the audio stream and play it through Home Assistant."""
         music_url = tool_input.tool_args["music_url"]
         entity_id = tool_input.tool_args["entity_id"]
+        saved_media: str | None = None
 
         try:
             if media_source.is_media_source_id(music_url):
                 media = await media_source.async_resolve_media(
                     hass, music_url, entity_id
+                )
+                stream_url = async_process_play_media_url(hass, media.url)
+            elif hass.config.media_dirs:
+                source, media_dir = next(iter(hass.config.media_dirs.items()))
+                media_dir = Path(media_dir)
+
+                def download_music() -> Path | None:
+                    download_dir = media_dir / "music"
+                    download_dir.mkdir(parents=True, exist_ok=True)
+                    with YoutubeDL(
+                        {
+                            "format": (
+                                "bestaudio[ext=m4a][protocol^=http]/"
+                                "bestaudio[protocol^=http]/bestaudio/best"
+                            ),
+                            "noplaylist": True,
+                            "outtmpl": str(download_dir / "%(title)s [%(id)s].%(ext)s"),
+                            "quiet": True,
+                        }
+                    ) as downloader:
+                        info = downloader.extract_info(music_url, download=True)
+                        if not info:
+                            return None
+                        downloads = info.get("requested_downloads") or []
+                        filepath = downloads[0].get("filepath") if downloads else None
+                        filepath = filepath or downloader.prepare_filename(info)
+                        return Path(filepath) if filepath else None
+
+                downloaded_path = await hass.async_add_executor_job(download_music)
+                if not downloaded_path:
+                    return {"success": False, "error": "Music download failed"}
+                saved_media = (
+                    f"media-source://media_source/{source}/"
+                    f"{downloaded_path.relative_to(media_dir).as_posix()}"
+                )
+                media = await media_source.async_resolve_media(
+                    hass, saved_media, entity_id
                 )
                 stream_url = async_process_play_media_url(hass, media.url)
             else:
@@ -100,10 +139,13 @@ class PlayMusicTool(BaseTool):
                 target={"entity_id": entity_id},
                 blocking=True,
             )
-            return {
+            response = {
                 "success": True,
                 "message": f"Now playing music on {entity_id}",
             }
+            if saved_media:
+                response["media_source"] = saved_media
+            return response
         except Exception as err:
             _LOGGER.exception("Failed to play music on %s", entity_id)
             return {

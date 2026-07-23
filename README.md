@@ -315,7 +315,7 @@ The tool automatically filters media players to only include video-capable devic
 
 1. **Search**: When a user requests a YouTube video, the `search_youtube` tool searches YouTube through `yt-dlp` and returns matching videos with metadata.
 2. **Music search**: The `search_music` tool checks Home Assistant's local media directories first. If no local track matches, it searches YouTube for official audio and prefers shorter results.
-3. **Playback**: The `play_video` and `play_music` tools play the selected result on the target device.
+3. **Playback**: The `play_video` and `play_music` tools play the selected result on the target device. Online music is downloaded into the first configured Home Assistant media directory under `music/`, making it available for later local searches.
 4. **Caching**: YouTube search results are cached for 2 hours to reduce requests and improve response times for repeated queries.
 
 ---

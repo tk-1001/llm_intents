@@ -95,3 +95,55 @@ async def test_play_music_resolves_local_media(hass: HomeAssistant) -> None:
 
     assert result["success"] is True
     hass.services.async_call.assert_awaited_once()
+
+
+async def test_play_music_downloads_web_music(
+    hass: HomeAssistant, tmp_path: Path
+) -> None:
+    """Download web music into Home Assistant media before playback."""
+    hass.config.media_dirs = {"local": str(tmp_path)}
+    downloaded = tmp_path / "music" / "Artist - Song [abc].m4a"
+    downloader = Mock()
+    downloader.__enter__ = Mock(return_value=downloader)
+    downloader.__exit__ = Mock(return_value=None)
+    downloader.extract_info.return_value = {
+        "requested_downloads": [{"filepath": str(downloaded)}]
+    }
+    hass.services.async_call = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.llm_intents.play_music.YoutubeDL",
+            return_value=downloader,
+        ),
+        patch(
+            "custom_components.llm_intents.play_music.media_source.async_resolve_media",
+            new_callable=AsyncMock,
+            return_value=Mock(url="/media/local/music/song.m4a"),
+        ) as resolve_media,
+        patch(
+            "custom_components.llm_intents.play_music.async_process_play_media_url",
+            return_value="http://home/media/local/music/song.m4a",
+        ),
+    ):
+        result = await PlayMusicTool({}, hass).async_call(
+            hass,
+            tool_input(
+                "play_music",
+                {
+                    "music_url": "https://youtube.com/watch?v=abc",
+                    "entity_id": "media_player.speaker",
+                },
+            ),
+            AsyncMock(),
+        )
+
+    downloader.extract_info.assert_called_once_with(
+        "https://youtube.com/watch?v=abc", download=True
+    )
+    resolve_media.assert_awaited_once_with(
+        hass,
+        "media-source://media_source/local/music/Artist - Song [abc].m4a",
+        "media_player.speaker",
+    )
+    assert result["media_source"].startswith("media-source://media_source/local/music/")
