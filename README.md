@@ -314,8 +314,9 @@ The tool automatically filters media players to only include video-capable devic
 #### How It Works
 
 1. **Search**: When a user requests a YouTube video, the `search_youtube` tool searches YouTube through `yt-dlp` and returns matching videos with metadata.
-2. **Playback**: If the user wants to play a video, the `play_video` tool uses the video URL from search results and calls Home Assistant's `media_player.play_media` service on the target device(s).
-3. **Caching**: Search results are cached for 2 hours to reduce requests and improve response times for repeated queries.
+2. **Music search**: The `search_music` tool checks Home Assistant's local media directories first. If no local track matches, it searches YouTube for official audio and prefers shorter results.
+3. **Playback**: The `play_video` and `play_music` tools play the selected result on the target device.
+4. **Caching**: YouTube search results are cached for 2 hours to reduce requests and improve response times for repeated queries.
 
 ---
 

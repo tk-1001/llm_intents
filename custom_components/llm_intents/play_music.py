@@ -3,7 +3,11 @@
 import logging
 
 import voluptuous as vol
-from homeassistant.components.media_player import MediaPlayerEntityFeature
+from homeassistant.components import media_source
+from homeassistant.components.media_player import (
+    MediaPlayerEntityFeature,
+    async_process_play_media_url,
+)
 from homeassistant.const import ATTR_SUPPORTED_FEATURES
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -22,12 +26,12 @@ class PlayMusicTool(BaseTool):
 
     name = "play_music"
     description = (
-        "Resolve a music URL to its downloadable audio stream and play it on a "
-        "Home Assistant media player."
+        "Resolve a music URL or Home Assistant media source and play it on a "
+        "media player."
     )
     prompt_description = (
-        "Use `play_music` with a music URL (including a YouTube URL) and a media "
-        "player entity when the user wants to listen to music."
+        "Use `play_music` with a result from `search_music` and a media player "
+        "entity when the user wants to listen to music."
     )
     parameters = vol.Schema({})
 
@@ -47,7 +51,7 @@ class PlayMusicTool(BaseTool):
             {
                 vol.Required(
                     "music_url",
-                    description="The URL of the music to play",
+                    description="The music URL or media source ID to play",
                 ): str,
                 vol.Required(
                     "entity_id",
@@ -67,16 +71,22 @@ class PlayMusicTool(BaseTool):
         entity_id = tool_input.tool_args["entity_id"]
 
         try:
-            info = await hass.async_add_executor_job(
-                lambda: YoutubeDL(
-                    {
-                        "format": "bestaudio[protocol^=http]/bestaudio/best",
-                        "noplaylist": True,
-                        "quiet": True,
-                    }
-                ).extract_info(music_url, download=False)
-            )
-            stream_url = info.get("url") if info else None
+            if media_source.is_media_source_id(music_url):
+                media = await media_source.async_resolve_media(
+                    hass, music_url, entity_id
+                )
+                stream_url = async_process_play_media_url(hass, media.url)
+            else:
+                info = await hass.async_add_executor_job(
+                    lambda: YoutubeDL(
+                        {
+                            "format": "bestaudio[protocol^=http]/bestaudio/best",
+                            "noplaylist": True,
+                            "quiet": True,
+                        }
+                    ).extract_info(music_url, download=False)
+                )
+                stream_url = info.get("url") if info else None
             if not stream_url:
                 return {"success": False, "error": "No playable audio stream found"}
 

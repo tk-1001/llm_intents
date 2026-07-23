@@ -6,7 +6,7 @@
     "@skye-harris"
   ],
   "config_flow": true,
-  "dependencies": ["intent"],
+  "dependencies": ["intent", "media_source"],
   "documentation": "https://github.com/skye-harris/llm_intents",
   "integration_type": "service",
   "iot_class": "cloud_polling",

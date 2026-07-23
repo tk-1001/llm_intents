@@ -44,7 +44,7 @@ from .searxng_search import SearXngSearchTool
 from .unit_converter import UnitConverterTool
 from .weather import WeatherForecastTool
 from .wikipedia import SearchWikipediaTool
-from .youtube import SearchYouTubeTool
+from .youtube import SearchMusicTool, SearchYouTubeTool
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ SEARCH_CONF_ENABLED_MAP = [
     (CONF_GOOGLE_PLACES_ENABLED, FindPlacesTool),
     (CONF_GOOGLE_ROUTES_ENABLED, GetRouteTool),
     (CONF_YOUTUBE_ENABLED, SearchYouTubeTool),
+    (CONF_YOUTUBE_ENABLED, SearchMusicTool),
     (CONF_WIKIPEDIA_ENABLED, SearchWikipediaTool),
 ]
 
